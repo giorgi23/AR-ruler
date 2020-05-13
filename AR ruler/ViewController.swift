@@ -11,11 +11,18 @@ import SceneKit
 import ARKit
 
 class ViewController: UIViewController, ARSCNViewDelegate {
+    
+    var dotNodes = [SCNNode]()
+    var textNode = SCNNode()
 
     @IBOutlet var sceneView: ARSCNView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        let node = SCNNode()
+        let textgeometry = SCNText()
+        node.geometry = textgeometry
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -25,7 +32,15 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        print("touch")
+        //allowing only 2 dots max at the same time
+        if dotNodes.count == 2{
+            for node in dotNodes {
+                node.removeFromParentNode()
+            }
+            
+            dotNodes.removeAll()
+        }
+        
         if let touch = touches.first {
             let location = touch.location(in: sceneView)
             let results = sceneView.hitTest(location, types: .featurePoint)
@@ -39,7 +54,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
     
     func addDot(at hitResult: ARHitTestResult) {
-        print("dot")
+        
         let dotGeometry = SCNSphere()
         dotGeometry.radius = 0.005
         let material = SCNMaterial()
@@ -52,6 +67,39 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         sceneView.scene.rootNode.addChildNode(dotNode)
         
+        dotNodes.append(dotNode)
+        
+        if dotNodes.count == 2 {
+            calculate()
+        }
+        print(dotNodes.count)
+    }
+    
+    func calculate (){
+        let start = dotNodes[0]
+        let end = dotNodes[1]
+        
+        let distance = sqrt(
+            pow(end.position.x - start.position.x, 2) +
+            pow(end.position.y - start.position.y, 2) +
+            pow(end.position.z - start.position.z, 2)
+        )
+        
+        updateText(text: "\(distance)", atPosition: end.position)
+        
+    }
+    
+    func updateText(text:String, atPosition: SCNVector3) {
+        //So texts won't overlap
+        textNode.removeFromParentNode()
+        
+        let textGeometry = SCNText(string: text, extrusionDepth: 1.0)
+        textGeometry.firstMaterial?.diffuse.contents = UIColor.blue
+        
+        textNode = SCNNode(geometry: textGeometry)
+        textNode.position = SCNVector3(atPosition.x, atPosition.y + 0.01, atPosition.z)
+        textNode.scale = SCNVector3(0.01, 0.01, 0.01)
+        sceneView.scene.rootNode.addChildNode(textNode)
     }
     
     override func viewWillAppear(_ animated: Bool) {
